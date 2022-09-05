@@ -2,6 +2,8 @@ package com.example.test;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.os.Handler;
+import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -29,6 +31,10 @@ public class Character extends ConstraintLayout {
     // 等待执行的动画
     private ArrayList<EnhanceAnimationDrawable> mWaitAnimationList = new ArrayList();
 
+    private Handler mHandler;
+    // 动画结束了的通知
+    private int endAnimation = 1;
+
     public Character(@NonNull Context context) {
         super(context);
         init(context);
@@ -49,28 +55,23 @@ public class Character extends ConstraintLayout {
         mLayout = LayoutInflater.from(context).inflate(R.layout.character, this, true);
         mCharacter = mLayout.findViewById(R.id.character_image);
 
-        new Thread() {
+        mHandler = new Handler() {
             @Override
-            public void run() {
-                super.run();
-                while (true) {
-                    // 循环检测动画是否已经结束
-                    if (!mIsAnimation) {
-                        // 已经没有动画需要执行了
-                        Log.d(TAG, "mWaitAnimationList size:" + mWaitAnimationList.size());
-                        if (mWaitAnimationList.size() != 0) {
-                            mIsAnimation = true;
-                            Log.d(TAG, "0:" + mWaitAnimationList.toString());
-                            // 动画结束,从等待的动画list取出第一个放到执行动画的list
-                            mExecuteAnimation = mWaitAnimationList.get(0);
-                            Log.d(TAG, "1:" + mWaitAnimationList.toString());
-                            mWaitAnimationList.remove(0);
-                            startAnimation();
-                        }
+            public void handleMessage(@NonNull Message msg) {
+                super.handleMessage(msg);
+                while (msg.what == endAnimation) {
+                    if (mWaitAnimationList.size() != 0) {
+                        Log.e(TAG, "还有多少动画在等待:" + mWaitAnimationList.size() + ", mIsAnimation: " + mIsAnimation);
+                        // 动画结束,从等待的动画list取出第一个放到执行动画的list
+                        mExecuteAnimation = mWaitAnimationList.get(0);
+                        Log.e(TAG, "1:" + mWaitAnimationList.toString());
+                        mWaitAnimationList.remove(0);
+                        executeAnimation(mExecuteAnimation);
                     }
                 }
             }
-        }.start();
+        };
+
     }
 
 
@@ -88,6 +89,13 @@ public class Character extends ConstraintLayout {
 
 
     public void leftAnimation() {
+        EnhanceAnimationDrawable leftAnimation = getLeftAnimation();
+        executeAnimation(leftAnimation);
+    }
+
+
+    // 接口
+    private EnhanceAnimationDrawable getLeftAnimation() {
         ArrayList<Integer> list = new ArrayList<>();
 
         list.add(R.mipmap.male_warrior_run_1);
@@ -104,8 +112,8 @@ public class Character extends ConstraintLayout {
         for (int i = 0; i < list.size(); i++) {
             animation.addFrame(resources.getDrawable(list.get(i)), 200);
         }
+        return animation;
 
-        executeAnimation(animation);
     }
 
     public void rightAnimation() {
@@ -116,10 +124,9 @@ public class Character extends ConstraintLayout {
         // 判断是否在进行动画
         if (mIsAnimation) {
             // 加入队列，等待执行
-            Log.d(TAG, "增加等待执行list");
+            Log.e(TAG, "增加等待执行list");
             mWaitAnimationList.add(enhanceAnimationDrawable);
         } else {
-
             mExecuteAnimation = enhanceAnimationDrawable;
             // 没有动画，直接执行动画
             startAnimation();
@@ -128,33 +135,38 @@ public class Character extends ConstraintLayout {
     }
 
     private void startAnimation() {
-        mIsAnimation = true;
 
-        mCharacter.setBackground(null);
-        mCharacter.setImageDrawable(mExecuteAnimation);
-        mExecuteAnimation.setOneShot(true);
-        mExecuteAnimation.start(new IAnimationDrawableCallBack() {
-            @Override
-            public void onStart() {
+        mLayout.post(() -> {
+            mCharacter.setBackground(null);
+            mCharacter.setImageDrawable(mExecuteAnimation);
+            mExecuteAnimation.setOneShot(true);
+            mExecuteAnimation.start(new IAnimationDrawableCallBack() {
+                @Override
+                public void onStart() {
+                    mIsAnimation = true;
+                    Log.e(TAG, "onStart: " + mIsAnimation);
+                }
 
-            }
+                @Override
+                public void onStop() {
 
-            @Override
-            public void onStop() {
+                }
 
-            }
-
-            @Override
-            public void end() {
-                mIsAnimation = false;
-                debugToast("动画结束");
-            }
+                @Override
+                public void end() {
+                    mIsAnimation = false;
+                    Log.e(TAG, "end: " + mIsAnimation);
+                    mHandler.sendEmptyMessage(endAnimation);
+                    Log.e(TAG, "动画结束");
+                    debugToast("动画结束");
+                }
+            });
         });
+
     }
 
     public void debugToast(String message) {
         mLayout.post(() -> Toast.makeText(mContext, message, Toast.LENGTH_LONG).show());
-
     }
 
 }

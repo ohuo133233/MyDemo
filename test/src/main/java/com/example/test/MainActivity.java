@@ -19,8 +19,8 @@ public class MainActivity extends AppCompatActivity {
         character.leftAnimation();
         character.leftAnimation();
         character.leftAnimation();
-        character.leftAnimation();
-        character.leftAnimation();
+//        character.leftAnimation();
+//        character.leftAnimation();
 
 //        EnhanceAnimationDrawable enhanceAnimationDrawable = new EnhanceAnimationDrawable();
 //        enhanceAnimationDrawable.addFrame(getResources().getDrawable(R.mipmap.male_warrior_run_1), 200);
